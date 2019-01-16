@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
-zygoteMntNs="$(readlink -f /proc/$(pidof zygote)/ns/mnt)"
-zygote64MntNs="$(readlink -f /proc/$(pidof zygote64)/ns/mnt)"
+zygoteMntNs="$(readlink /proc/$(pidof zygote)/ns/mnt)"
+zygote64MntNs="$(readlink /proc/$(pidof zygote64)/ns/mnt)"
 
 logcat -b events -v raw -s am_proc_bound:I | while read line; do
 	pid="$(echo $line | cut -d , -f 2)"
