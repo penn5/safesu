@@ -11,6 +11,7 @@ logcat -b events -v raw -s am_proc_bound:I | while read line; do
 	        echo "$pid, $pkgname didnt change namespace. Cant give su without comprimising system integrity."
 	        continue
 	fi
+	grep "^$pkgname$" /data/adb/rootallow.txt || continue # Make sure this process is allowed to access root.
 	busybox_phh nsenter -m/proc/$pid/ns/mnt -- mount -o bind,private /system/etc/nomagic /system/xbin
 	echo "nsenter mount command returned $?"
 done
