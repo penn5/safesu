@@ -1,17 +1,20 @@
 #!/system/bin/sh
 
+IFS=';'
+
 zygoteMntNs="$(readlink /proc/$(pidof zygote)/ns/mnt)"
 zygote64MntNs="$(readlink /proc/$(pidof zygote64)/ns/mnt)"
 
-logcat -b events -v raw -s am_proc_bound:I | while read line; do
-	pid="$(echo $line | cut -d , -f 2)"
-	pkgname="$(echo $line | cut -d , -f 4 | cut -d : -f 1)" #e.g. com.brave.browser:sandboxed_process7 needs the :sandboxed_process7 removing, hence the second cut.
-	echo "Giving root to pid $pid, package name $pkgname now."
+logcat -b events -v raw -s am_proc_bound | while read -r line
+do
+	pid="$(echo \"$line\" | cut -d , -f 2)"
+	pkgname="$(echo \"$line\" | cut -d , -f 3 | cut -d : -f 1 | sed 's/]\"$//')" #e.g. com.brave.browser:sandboxed_process7 needs the :sandboxed_process7 removing, hence the second cut.
+	grep "^$pkgname$" /data/adb/rootallow.txt || continue # Make sure this process is allowed to access root.
 	if [ "$(readlink /proc/$pid/ns/mnt)" == "$zygoteMntNs" -o "$(readlink /proc/$pid/ns/mnt)" == "$zygote64MntNs" ];then
 	        echo "$pid, $pkgname didnt change namespace. Cant give su without comprimising system integrity."
 	        continue
 	fi
-	grep "^$pkgname$" /data/adb/rootallow.txt || continue # Make sure this process is allowed to access root.
+	echo "Giving root to pid $pid, package name $pkgname now."
 	busybox_phh nsenter -m/proc/$pid/ns/mnt -- mount -o bind,private /system/etc/nomagic /system/xbin
 	echo "nsenter mount command returned $?"
 done
