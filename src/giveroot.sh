@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-IFS=';'
+#IFS=';'
 
 zygoteMntNs="$(readlink /proc/$(pidof zygote)/ns/mnt)"
 zygote64MntNs="$(readlink /proc/$(pidof zygote64)/ns/mnt)"
@@ -15,7 +15,7 @@ do
 	        continue
 	fi
 	echo "Giving root to pid $pid, package name $pkgname now."
-	busybox_phh nsenter -m/proc/$pid/ns/mnt -- mount -o bind,private /system/etc/nomagic /system/xbin
+	/system/etc/nomagic/busybox nsenter -m/proc/$pid/ns/mnt -- mount -o bind,private /system/etc/nomagic /system/xbin
 	echo "nsenter mount command returned $?"
 done
 return 2
