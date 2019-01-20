@@ -25,6 +25,7 @@
 find_package_name () {
 	if [ "$1" = "1" ]; then
 		return 1
+	fi
 	exe=$(readlink "/proc/$1/exe")
 	if [ "$exe" = "/system/bin/app_process" -o "$exe" = "/system/bin/app_process32" -o "$exe" = "/system/bin/app_process64" ]; then
 		# Its the one we're looking for
@@ -32,6 +33,7 @@ find_package_name () {
 		return 0
 	else
 		return find_package_name $(cat "/proc/$1/status" | grep '^Ppid:' | cut -d '\t' -f 2)
+	fi
 }
 
 echo "$1 $2 $3"
