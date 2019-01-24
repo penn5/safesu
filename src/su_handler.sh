@@ -23,16 +23,27 @@
 # The mask is :n so we know we will not have to check the type.
 
 find_package_name () {
+	echo "$1"
 	if [ "$1" = "1" ]; then
 		return 1
 	fi
+	echo "readlink \"/proc/$1/exe\""
 	exe=$(readlink "/proc/$1/exe")
+	echo "$exe"
+	if [ "$exe" = "/system/bin/adbd" ]; then
+		return 0
+	fi
 	if [ "$exe" = "/system/bin/app_process" -o "$exe" = "/system/bin/app_process32" -o "$exe" = "/system/bin/app_process64" ]; then
 		# Its the one we're looking for
-		package=$(cat "/proc/$1/cmdline")
-		return 0
+		package=$(cat "/proc/$1/cmdline" | cut -d '' -f 1)
+		echo "$package"
+		cat "/proc/$1/cmdline"
+		grep "^$package$" /data/adb/rootallow.txt && { echo "Package $package is authorised, continuing"; return 0; }
+		return 1
 	else
-		return find_package_name $(cat "/proc/$1/status" | grep '^Ppid:' | cut -d '\t' -f 2)
+		ppidt=$(cat "/proc/$1/status" | grep '^PPid:' | cut -d $'\t' -f 2)
+		find_package_name "$ppidt"
+		return $?
 	fi
 }
 
@@ -48,7 +59,12 @@ fi
 
 
 # Make sure this process is allowed su access before we even set up the write channel.
+echo "read pidverif start"
 read -r pidverif < "$rpipe"
+echo "read pidverif end"
+wpipe=$(echo "$pidverif" | cut -d - -f 2)
+pidverif=$(echo "$pidverif" | cut -d - -f 1)
+echo "$pidverif"
 echo "$pidverif" | grep '[^a-zA-Z0-9]'
 if [ "$?" = "0" ]; then
 	echo "INVALID PIDVERIF"
@@ -62,10 +78,9 @@ if [ ! -f "$pidverif" ]; then
 fi
 
 read -r pidcheck < "$pidverif"
-read -r wpipe < "$rpipe"
 
 if [ ! "$rpipe" = "$pidcheck" ]; then
-	echo "SECURITY ERROR, ABORTING BEFORE WE ARE DETECTED!"
+	echo "SECURITY ERROR, ABORTING BEFORE WE ARE DETECTED! $3 $pidcheck"
 	exit 99
 fi
 
@@ -74,14 +89,10 @@ if [ -z "$openpid" ]; then
 	echo "NOONE HAS OPENED THE SECURITY CHECK FILE, UNABLE TO VERIFY PID."
 	exit 97
 fi
-find_package_name $openpid
-if [ -z "$package" ]; then
-	pkgname="$(cat /proc/$openpid/cmdline)"
-else
-	pkgname="$package"
-fi
+echo $openpid
 echo "Processing root request from package/process: $pkgname"
-grep "^$pkgname$" /data/adb/rootallow.txt ||  { echo "SECURITY ERROR, UNAUTHORIZED SU REQUEST. EXITING. "; exit 98; }
+find_package_name "$openpid"
+[ ! "$?" = "0" ] ||  { echo "SECURITY ERROR, UNAUTHORIZED SU REQUEST. EXITING. "; exit 98; }
 
 # Assert that wpipe is alphanumerical and the right length, otherwise we might get someone trying to abuse the su daemon to write to arbritary locations on disk as root, potentially /data/adb/rootallow.txt.
 echo "$wpipe" | grep '[^a-zA-Z0-9]'
@@ -96,7 +107,7 @@ if [ ! -p "$wpipe" ]; then
 	echo "WPIPE DOES NOT EXIST"
 	exit 2
 fi
-echo "0" >> "$wpipe"
+echo "0" >> "$wpipe" # Version number
 
 read -r tty < "$rpipe"
 

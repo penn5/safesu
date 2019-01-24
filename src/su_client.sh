@@ -77,16 +77,17 @@ wpipe=/system/etc/nomagic/sureq/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c
 /system/etc/nomagic/busybox mknod "$wpipe" p
 
 secfile=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
-echo "$rpipe" > "/system/etc/nomagic/pidverif/$secfile"
+echo "$wpipe" > "/system/etc/nomagic/pidverif/$secfile"
 touch "/system/etc/nomagic/pidverif/$secfile"
 exec 3<"/system/etc/nomagic/pidverif/$secfile"
-echo "$secfile" >> "$wpipe"
-echo "$rpipe" >> "$wpipe"
+echo "$secfile-$rpipe" >> "$wpipe"
 rpipe="/system/etc/nomagic/sus/$rpipe"
 read -r hello < "$rpipe"
-[ "$hello" = "$VERSION" ] || (echo "incorrect hello from su_handler, got $hello!";exit 1)
 
 exec 3<&-
+
+[ "$hello" = "$VERSION" ] || (echo "incorrect hello from su_handler, got $hello!";exit 1)
+
 rm -f "/system/etc/nomagic/pidverif/$secfile"
 
 if [ ! -t 0 ] || [ ! -t 1 ] || [ "$interactive" = "0" ]; then
@@ -123,11 +124,12 @@ read -r message < "$rpipe"
 
 echo "$command" >> "$wpipe"
 
+read -r rinteractive < "$rpipe"
+
 # Check all went well, and leave stuff to happen on its own. su_handler will hijack our pty (tty unsupported rn bcos i havent implemented proper sanitization for full paths.) and launch a shell there.
 read -r message < "$rpipe"
 [ "$message" = "ok" ] || { echo "didnt get okay!";exit 1; }
 
-read -r rinteractive < "$rpipe"
 if [ "$interactive" = "1" ]; then
 	#We don't have to do anything special, the remote will do everything for us and our tty will be taken over.
 	echo "Getting a shell just for you!"
@@ -143,7 +145,7 @@ fi
 
 echo "go" >> "$wpipe"
 
-read -r message < "$rpipe" # and wait for completion.
-[ "$message" = "done" ] || { echo "didn't get done!";exit 1; }
-read -r rc < "$rpipe"
+read -r rc < "$rpipe" # and wait for completion.
+echo "$rc" | grep '[^0-9]'
+[ "$?" = "1" ] || { echo "didn't get retcode, got $rc!";exit 1; }
 exit $rc #no need to sanitize since only root (su_handler) could have access to this pipe.
