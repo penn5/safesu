@@ -38,8 +38,13 @@ find_package_name () {
 		package=$(cat "/proc/$1/cmdline" | cut -d '' -f 1)
 		echo "$package"
 		cat "/proc/$1/cmdline"
-		grep "^$package$" /data/adb/rootallow.txt && { echo "Package $package is authorised, continuing"; return 0; }
-		return 1
+		grep "^$package$" /data/adb/rootallow.txt
+		if [ "$?" = "0" ]; then
+			echo "Package $package is authorised, continuing"
+			return 0
+		else
+			return 1
+		fi
 	else
 		ppidt=$(cat "/proc/$1/status" | grep '^PPid:' | cut -d $'\t' -f 2)
 		find_package_name "$ppidt"
@@ -92,7 +97,9 @@ fi
 echo $openpid
 echo "Processing root request from package/process: $pkgname"
 find_package_name "$openpid"
-[ ! "$?" = "0" ] ||  { echo "SECURITY ERROR, UNAUTHORIZED SU REQUEST. EXITING. "; exit 98; }
+ret="$?"
+echo "$ret"
+[ "$ret" = "0" ] || { echo "SECURITY ERROR, UNAUTHORIZED SU REQUEST. EXITING. "; exit 98; }
 
 # Assert that wpipe is alphanumerical and the right length, otherwise we might get someone trying to abuse the su daemon to write to arbritary locations on disk as root, potentially /data/adb/rootallow.txt.
 echo "$wpipe" | grep '[^a-zA-Z0-9]'
@@ -226,7 +233,7 @@ echo 4
 echo "ok" >> "$wpipe"
 read -r message < "$rpipe"
 [ "$message" = "go" ] || { echo "they aborted!"; exit 20; }
-/system/etc/nomagic/busybox nsenter -m$chnspath -S$chuid -- /system/bin/sh -c "$cmd"
+/system/etc/nomagic/busybox nsenter -m$chnspath -S$chuid -- /system/bin/sh -c "$cmd" &
 echo 5
 
 exit 10

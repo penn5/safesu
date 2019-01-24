@@ -7,6 +7,7 @@ zygote64MntNs="$(readlink /proc/$(pidof zygote64)/ns/mnt)"
 
 logcat -b events -v raw -s am_proc_bound | while read -r line
 do
+	echo "$line"
 	pid="$(echo \"$line\" | cut -d , -f 2)"
 	pkgname="$(echo \"$line\" | cut -d , -f 3 | cut -d : -f 1 | sed 's/]\"$//')" #e.g. com.brave.browser:sandboxed_process7 needs the :sandboxed_process7 removing, hence the second cut.
 	grep "^$pkgname$" /data/adb/rootallow.txt || continue # Make sure this process is allowed to access root.
