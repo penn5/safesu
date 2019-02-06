@@ -1,7 +1,22 @@
 VERSION=0
 #. /data/adb/safesu.cfg
 
-usage() { echo "Usage: $0 [-s <45|90>] [-p <string>]" 1>&2; exit 1; }
+usage() { echo "SafeSU v0" 1>&2
+       echo "Usage: su [options] [-] [user [argument...]]" 1>&2
+       echo 1>&2
+       echo "Options:" 1>&2
+       echo "  -c, --command COMMAND         pass COMMAND to the invoked shell" 1>&2
+       echo "  -h, --help                    display this help message and exit" 1>&2
+       echo "  -, -l, --login                pretend the shell to be a login shell" 1>&2
+       echo "  -m, -p," 1>&2
+       echo "  --preserve-environment        preserve the entire environment" 1>&2
+       echo "  -s, --shell SHELL             use SHELL instead of the default $DEFAULT_SHELL" 1>&2
+       echo "  -v, --version                 display version number and exit" 1>&2
+       echo "  -V                            display version code and exit" 1>&2
+       echo "  -mm, -M," 1>&2
+       echo "  --mount-master                force run in the global mount namespace" 1>&2
+       echo "  --mount-isolated              run in a new isolated mount namespace" 2>&2
+       exit 1; }
 
 interactive=1
 environ=0
@@ -10,7 +25,7 @@ command=""
 shell="/system/bin/sh"
 mountmode=$$
 
-options=$(/system/etc/nomagic/busybox getopt -l "command:,help,login,preserve-environment,shell:,version,context:,mount-master" -o "c:hlmps:Vvz:M" -- "$@")
+options=$(/system/etc/nomagic/busybox getopt -l "command:,help,login,preserve-environment,shell:,version,context:,mount-master,mount-isolated" -o "c:hlmps:Vvz:Mi" -- "$@")
 [ $? -eq 0 ] || {
 	echo "$options"
 	echo "Incorrect options provided"
@@ -54,13 +69,21 @@ while true; do
 		-M)
 			mountmode=1
 			;;
+		-i)
+			mountmode=0
+			;;
 		-h)
 			usage
 			;;
+		--help)
+			usage
+			;;
 		--)
-			shift $((OPTIND - 1))
+			shift
 			break
+			;;
 	esac
+	shift || break
 done
 
 echo "interactive=$interactive"
@@ -130,7 +153,7 @@ read -r rinteractive < "$rpipe"
 read -r message < "$rpipe"
 [ "$message" = "ok" ] || { echo "didnt get okay!";exit 1; }
 
-if [ "$interactive" = "1" ]; then
+if [ "$rinteractive" = "1" ]; then
 	#We don't have to do anything special, the remote will do everything for us and our tty will be taken over.
 	echo "Getting a shell just for you!"
 else

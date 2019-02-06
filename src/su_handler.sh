@@ -30,7 +30,7 @@ find_package_name () {
 	echo "readlink \"/proc/$1/exe\""
 	exe=$(readlink "/proc/$1/exe")
 	echo "$exe"
-	if [ "$exe" = "/system/bin/adbd" ]; then
+	if [ "$exe" = "/system/bin/adbd" -o "$exe" = "/sbin/adbd" ]; then
 		return 0
 	fi
 	if [ "$exe" = "/system/bin/app_process" -o "$exe" = "/system/bin/app_process32" -o "$exe" = "/system/bin/app_process64" ]; then
@@ -191,10 +191,11 @@ read -r command < "$rpipe"
 echo 0
 # Lets start building the command we will later run.
 #base and shell:
-cmd="/system/etc/nomagic/busybox setsid /system/bin/sh -c '$shell"
+cmd="$shell"
 
 if [ ! -z "$command" ]; then
-	cmd="$cmd -c \\'$command\\'"
+	tmpcommand=/system/etc/nomagic/cmds/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
+	cmd="$cmd $tmpcommand"
 fi
 echo 1
 #End the command

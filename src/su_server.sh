@@ -4,5 +4,15 @@
 # /system/etc/nomagic/sureq is chmod 1733 (trwx-wx-wx) so that non-root cannot list it. However we are root, so we can list it.
 # When we see an incoming connection, we open it and use lsof to check what other processes have a handle on it. If the other process is on the whitelist, we allow it and grant su (NI)
 
-/system/etc/nomagic/busybox inotifyd /system/etc/nomagic/su_handler.sh /system/etc/nomagic/sureq:n
+mkdir /system/etc/nomagic/sus
+chmod 1733 /system/etc/nomagic/sus
+mkdir /system/etc/nomagic/sureq
+chmod 1733 /system/etc/nomagic/sureq
+mkdir /system/etc/nomagic/pidverif
+chmod 1733 /system/etc/nomagic/pidverif
+mkdir /system/etc/nomagic/cmds
+chmod 1733 /system/etc/nomagic/cmds
+
+
+/system/etc/nomagic/busybox inotifyd /system/etc/nomagic/su_helper.sh /system/etc/nomagic/sureq:n
 return 0
