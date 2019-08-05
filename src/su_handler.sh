@@ -22,6 +22,10 @@
 
 # The mask is :n so we know we will not have to check the type.
 
+echo "HANDLER INIT"
+
+PROTOCOL_VERSION=0
+
 find_package_name () {
 	echo "$1"
 	if [ "$1" = "1" ]; then
@@ -114,7 +118,7 @@ if [ ! -p "$wpipe" ]; then
 	echo "WPIPE DOES NOT EXIST"
 	exit 2
 fi
-echo "0" >> "$wpipe" # Version number
+echo "$PROTOCOL_VERSION" >> "$wpipe" # Version number
 
 read -r tty < "$rpipe"
 
@@ -213,13 +217,22 @@ else
 	/system/etc/nomagic/busybox mknod "$stdinpipe" p
 	/system/etc/nomagic/busybox mknod "$stdoutpipe" p
 	/system/etc/nomagic/busybox mknod "$stderrpipe" p
-	echo "$stdinpipe" >> "$wpipe"
-	echo "$stdoutpipe" >> "$wpipe"
-	echo "$stderrpipe" >> "$wpipe"
+        echo "pipes $stdinpipe $stdoutpipe $stderrpipe END"
+        echo "hello world" >> "$wpipe"
+        echo "hello world" >> "$wpipe"
+        echo "hello world" >> "$wpipe"
+        echo "hello world" >> "$wpipe"
+        echo "hello world" >> "$wpipe"
+        echo "hello world" >> "$wpipe"
+        echo "hello world" >> "$wpipe"
+#	echo "$stdinpipe" >> "$wpipe"
+#	echo "$stdoutpipe" >> "$wpipe"
+#	echo "$stderrpipe" >> "$wpipe"
+        echo pipes sent
 	cmd="$cmd >$stdoutpipe <$stdinpipe 2>$stderrpipe"
 fi
 
-cmd="$cmd; echo "'$?'" >> $wpipe'"
+cmd="$cmd; echo "'$?'" >> $wpipe"
 
 echo "$cmd"
 
@@ -232,9 +245,11 @@ fi
 # TODO: check package name and make sure they are allowed root. packagename is in /proc/pid/cmdline
 echo 4
 echo "ok" >> "$wpipe"
+echo "5: $wpipe"
 read -r message < "$rpipe"
+echo 6
 [ "$message" = "go" ] || { echo "they aborted!"; exit 20; }
-/system/etc/nomagic/busybox nsenter -m$chnspath -S$chuid -- /system/bin/sh -c "$cmd" &
+/system/etc/nomagic/busybox nsenter -m$chnspath -S$chuid -- setsid /system/bin/sh -c "$cmd" &
 echo 5
 
 exit 10

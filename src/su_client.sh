@@ -1,4 +1,4 @@
-VERSION=0
+PROTOCOL_VERSION=0
 #. /data/adb/safesu.cfg
 
 usage() { echo "SafeSU v0" 1>&2
@@ -56,11 +56,11 @@ while true; do
 			shell="$1"
 			;;
 		-v)
-			echo "$VERSION"
+			echo "$PROTOCOL_VERSION"
 			exit
 			;;
 		-V)
-			echo "SafeSU $VERSION (hackintosh5)"
+			echo "SafeSU $PROTOCOL_VERSION (hackintosh5)"
 			exit
 			;;
 		-z)
@@ -109,7 +109,7 @@ read -r hello < "$rpipe"
 
 exec 3<&-
 
-[ "$hello" = "$VERSION" ] || (echo "incorrect hello from su_handler, got $hello!";exit 1)
+[ "$hello" = "$PROTOCOL_VERSION" ] || (echo "incorrect hello from su_handler, got $hello!";exit 1)
 
 rm -f "/system/etc/nomagic/pidverif/$secfile"
 
@@ -139,34 +139,44 @@ echo "sent shell: $shell"
 
 [ "$login" = "1" ] && echo "root" >> "$wpipe" || echo >> "$wpipe"
 read -r message < "$rpipe"
-[ "$message" = "ok" ] || { echo "didnt get okay!";exit 1; }
+[ "$message" = "ok" ] || { echo "didnt get okay1!";exit 1; }
 
 [ "$environ" = "1" ] && (env -0 && echo) >> "$wpipe" || echo >> "$wpipe"
 read -r message < "$rpipe"
-[ "$message" = "ok" ] || { echo "didnt get okay!";exit 1; }
+[ "$message" = "ok" ] || { echo "didnt get okay2!";exit 1; }
 
 echo "$command" >> "$wpipe"
 
 read -r rinteractive < "$rpipe"
-
-# Check all went well, and leave stuff to happen on its own. su_handler will hijack our pty (tty unsupported rn bcos i havent implemented proper sanitization for full paths.) and launch a shell there.
-read -r message < "$rpipe"
-[ "$message" = "ok" ] || { echo "didnt get okay!";exit 1; }
+echo $rinteractive
 
 if [ "$rinteractive" = "1" ]; then
 	#We don't have to do anything special, the remote will do everything for us and our tty will be taken over.
 	echo "Getting a shell just for you!"
 else
 	#We need to read the stdin/out/err pipes from the rpipe and read them into/out of our stdio. TODO: Trap signals?
+        echo "reading pipes"
 	read -r stdinpipe < "$rpipe"
+        echo "reading pipes $stdinpipe"
 	read -r stdoutpipe < "$rpipe"
+        echo "reading pipes $stdoutpipe"
 	read -r stderrpipe < "$rpipe"
+        echo "reading pipes $stdinpipe $stdoutpipe $stderrpipe END"
 	dd if=/dev/stdin of=$stdinpipe &
-	dd if=/dev/stdout of=$stdoutpipe &
-	dd if=/dev/stderr of=$stderrpipe &
+	dd if=$stdoutpipe of=/dev/stdout &
+	dd if=$stderrpipe of=/dev/stderr &
 fi
 
+# Check all went well, and leave stuff to happen on its own. su_handler will hijack our pty (tty unsupported rn bcos i havent implemented proper sanitization for full paths.) and launch a shell there.
+read -r message < "$rpipe"
+[ "$message" = "ok" ] || { echo "didnt get okay3! $message";exit 1; }
+
 echo "go" >> "$wpipe"
+
+# Hand over control - we have no more job here.
+0<&-
+1<&-
+2<&-
 
 read -r rc < "$rpipe" # and wait for completion.
 echo "$rc" | grep '[^0-9]'

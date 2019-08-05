@@ -14,5 +14,5 @@ mkdir /system/etc/nomagic/cmds
 chmod 1733 /system/etc/nomagic/cmds
 
 
-/system/etc/nomagic/busybox inotifyd /system/etc/nomagic/su_helper.sh /system/etc/nomagic/sureq:n
+/system/etc/nomagic/busybox inotifyd /system/etc/nomagic/su_handler.sh /system/etc/nomagic/sureq:n
 return 0
