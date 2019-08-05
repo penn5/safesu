@@ -153,30 +153,30 @@ echo $rinteractive
 if [ "$rinteractive" = "1" ]; then
 	#We don't have to do anything special, the remote will do everything for us and our tty will be taken over.
 	echo "Getting a shell just for you!"
+
+        # Hand over control - we have no more work here.
+        0<&-
+        1<&-
+        2<&-
 else
 	#We need to read the stdin/out/err pipes from the rpipe and read them into/out of our stdio. TODO: Trap signals?
         echo "reading pipes"
-	read -r stdinpipe < "$rpipe"
-        echo "reading pipes $stdinpipe"
-	read -r stdoutpipe < "$rpipe"
-        echo "reading pipes $stdoutpipe"
-	read -r stderrpipe < "$rpipe"
-        echo "reading pipes $stdinpipe $stdoutpipe $stderrpipe END"
-	dd if=/dev/stdin of=$stdinpipe &
-	dd if=$stdoutpipe of=/dev/stdout &
-	dd if=$stderrpipe of=/dev/stderr &
+        read -r pipes < "$rpipe"
+        stdinpipe=$(echo "$pipes" | cut -d - -f 1)
+        stdoutpipe=$(echo "$pipes" | cut -d - -f 2)
+        stderrpipe=$(echo "$pipes" | cut -d - -f 3)
+        echo "read pipes $stdinpipe $stdoutpipe $stderrpipe END"
+	cat >$stdinpipe 2>/dev/null &
+	cat $stdoutpipe &
+	cat $stderrpipe >&2 &
 fi
 
 # Check all went well, and leave stuff to happen on its own. su_handler will hijack our pty (tty unsupported rn bcos i havent implemented proper sanitization for full paths.) and launch a shell there.
 read -r message < "$rpipe"
 [ "$message" = "ok" ] || { echo "didnt get okay3! $message";exit 1; }
 
+read -r
 echo "go" >> "$wpipe"
-
-# Hand over control - we have no more job here.
-0<&-
-1<&-
-2<&-
 
 read -r rc < "$rpipe" # and wait for completion.
 echo "$rc" | grep '[^0-9]'

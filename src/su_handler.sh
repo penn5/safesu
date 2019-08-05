@@ -199,6 +199,7 @@ cmd="$shell"
 
 if [ ! -z "$command" ]; then
 	tmpcommand=/system/etc/nomagic/cmds/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
+        echo -En "$command" > "$tmpcommand" # i cba to quote everything right
 	cmd="$cmd $tmpcommand"
 fi
 echo 1
@@ -211,23 +212,14 @@ if [ "$interactive" = "1" ]; then
 	cmd="$cmd <$tty >$tty 2>$tty" #Make $? literal, so its evaluated later, like laaaaaaaater.
 else
 	echo 3
-	stdinpipe=/system/etc/nomagic/sureq/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
-	stdoutpipe=/system/etc/nomagic/sureq/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
-	stderrpipe=/system/etc/nomagic/sureq/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
+	stdinpipe=/system/etc/nomagic/sus/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
+	stdoutpipe=/system/etc/nomagic/sus/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
+	stderrpipe=/system/etc/nomagic/sus/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
 	/system/etc/nomagic/busybox mknod "$stdinpipe" p
 	/system/etc/nomagic/busybox mknod "$stdoutpipe" p
 	/system/etc/nomagic/busybox mknod "$stderrpipe" p
         echo "pipes $stdinpipe $stdoutpipe $stderrpipe END"
-        echo "hello world" >> "$wpipe"
-        echo "hello world" >> "$wpipe"
-        echo "hello world" >> "$wpipe"
-        echo "hello world" >> "$wpipe"
-        echo "hello world" >> "$wpipe"
-        echo "hello world" >> "$wpipe"
-        echo "hello world" >> "$wpipe"
-#	echo "$stdinpipe" >> "$wpipe"
-#	echo "$stdoutpipe" >> "$wpipe"
-#	echo "$stderrpipe" >> "$wpipe"
+	echo "$stdinpipe-$stdoutpipe-$stderrpipe" >> "$wpipe"
         echo pipes sent
 	cmd="$cmd >$stdoutpipe <$stdinpipe 2>$stderrpipe"
 fi
