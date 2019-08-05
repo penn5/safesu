@@ -242,7 +242,7 @@ read -r message < "$rpipe"
 echo 6
 [ "$message" = "go" ] || { echo "they aborted!"; exit 20; }
 /system/etc/nomagic/busybox nsenter -m$chnspath -S$chuid -- setsid /system/bin/sh -c "$cmd" &
-echo 5
+echo 7
 
 exit 10
 

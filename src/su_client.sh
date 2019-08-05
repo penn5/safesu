@@ -7,7 +7,7 @@ usage() { echo "SafeSU v0" 1>&2
        echo "Options:" 1>&2
        echo "  -c, --command COMMAND         pass COMMAND to the invoked shell" 1>&2
        echo "  -h, --help                    display this help message and exit" 1>&2
-       echo "  -, -l, --login                pretend the shell to be a login shell" 1>&2
+       echo "  -, -l, --login                make the shell pretend to be a login shell" 1>&2
        echo "  -m, -p," 1>&2
        echo "  --preserve-environment        preserve the entire environment" 1>&2
        echo "  -s, --shell SHELL             use SHELL instead of the default $DEFAULT_SHELL" 1>&2
@@ -175,10 +175,12 @@ fi
 read -r message < "$rpipe"
 [ "$message" = "ok" ] || { echo "didnt get okay3! $message";exit 1; }
 
-read -r
 echo "go" >> "$wpipe"
-
-read -r rc < "$rpipe" # and wait for completion.
+while true; do
+	read -r rc < "$rpipe" && break # and wait for completion.
+#	sleep 2
+	echo fail
+done
 echo "$rc" | grep '[^0-9]'
 [ "$?" = "1" ] || { echo "didn't get retcode, got $rc!";exit 1; }
 exit $rc #no need to sanitize since only root (su_handler) could have access to this pipe.

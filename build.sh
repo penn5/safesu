@@ -4,11 +4,9 @@ rm -rf out
 mkdir -p out/system/etc/nomagic
 
 cd busybox
-make LDFLAGS=--static ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- mrproper
-cd ..
+git submodule init
 git submodule sync
 git submodule update
-cd busybox
 make LDFLAGS=--static ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- allnoconfig
 sed -i 's/^# CONFIG_NSENTER is not set$/CONFIG_NSENTER=y/' .config # Needed to mount in a specific process's domain, and for mountmode=1
 sed -i 's/^# CONFIG_INOTIFYD is not set$/CONFIG_INOTIFYD=y/' .config # Needed to watch for new pipes in sureq
@@ -27,3 +25,4 @@ cd ..
 cp busybox/busybox out/system/etc/nomagic/busybox
 
 cp src/*.sh out/system/etc/nomagic
+ln -s su_client.sh out/system/etc/nomagic/su
