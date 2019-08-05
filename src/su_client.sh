@@ -1,7 +1,7 @@
 PROTOCOL_VERSION=0
 #. /data/adb/safesu.cfg
 
-dbg() { return $debug; }
+dbg() { return $((1-$debug)); }
 
 usage() { echo "SafeSU v0" 1>&2
 	echo "Usage: su [options] [-] [user [argument...]]" 1>&2
@@ -30,33 +30,28 @@ shell="/system/bin/sh"
 mountmode=$$
 debug=0
 
-options=$(/system/etc/nomagic/busybox getopt -l "command:,help,login,preserve-environment,shell:,version,context:,mount-master,mount-isolated" -o "c:hlmps:Vvz:Mi" -- "$@")
+options=$(/system/etc/nomagic/busybox getopt -l "command:,help,login,preserve-environment,shell:,version,context:,mount-master,mount-isolated,debug" -o "c:hlmps:Vvz:Mid" -- "$@")
 [ $? -eq 0 ] || {
 	echo "$options"
 	echo "Incorrect options provided"
 	exit 1
 }
-
 eval set -- "$options"
 while true; do
-	echo "$1"
 	case "$1" in
-		-c)
+		-c|--command)
 			shift
 			command="$1"
 			interactive=0
 			;;
-		-l)
+		-l|--login|-)
 			interactive=1
 			login=1
 			;;
-		-m)
+		-m|-p|--preserve-environment)
 			environ=1
 			;;
-		-p)
-			environ=1
-			;;
-		-s)
+		-s|--shell)
 			shift
 			shell="$1"
 			;;
@@ -64,26 +59,23 @@ while true; do
 			echo "$PROTOCOL_VERSION"
 			exit
 			;;
-		-V)
+		-V|--version)
 			echo "SafeSU $PROTOCOL_VERSION (hackintosh5)"
 			exit
 			;;
 		-z)
 			shift
 			;;
-		-M)
+		-M|-mm|--mount-master)
 			mountmode=1
 			;;
-		-i)
+		-i|--mount-isolated)
 			mountmode=0
 			;;
-		-d)
+		-d|--debug)
 			debug=1
 			;;
-		-h)
-			usage
-			;;
-		--help)
+		-h|--help)
 			usage
 			;;
 		--)
