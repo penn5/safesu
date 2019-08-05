@@ -1,22 +1,26 @@
 PROTOCOL_VERSION=0
 #. /data/adb/safesu.cfg
 
+dbg() { return $debug; }
+
 usage() { echo "SafeSU v0" 1>&2
-       echo "Usage: su [options] [-] [user [argument...]]" 1>&2
-       echo 1>&2
-       echo "Options:" 1>&2
-       echo "  -c, --command COMMAND         pass COMMAND to the invoked shell" 1>&2
-       echo "  -h, --help                    display this help message and exit" 1>&2
-       echo "  -, -l, --login                make the shell pretend to be a login shell" 1>&2
-       echo "  -m, -p," 1>&2
-       echo "  --preserve-environment        preserve the entire environment" 1>&2
-       echo "  -s, --shell SHELL             use SHELL instead of the default $DEFAULT_SHELL" 1>&2
-       echo "  -v, --version                 display version number and exit" 1>&2
-       echo "  -V                            display version code and exit" 1>&2
-       echo "  -mm, -M," 1>&2
-       echo "  --mount-master                force run in the global mount namespace" 1>&2
-       echo "  --mount-isolated              run in a new isolated mount namespace" 2>&2
-       exit 1; }
+	echo "Usage: su [options] [-] [user [argument...]]" 1>&2
+	echo 1>&2
+	echo "Options:" 1>&2
+	echo "  -c, --command COMMAND         pass COMMAND to the invoked shell" 1>&2
+	echo "  -h, --help                    display this help message and exit" 1>&2
+	echo "  -, -l, --login                make the shell pretend to be a login shell" 1>&2
+	echo "  -m, -p," 1>&2
+	echo "  --preserve-environment        preserve the entire environment" 1>&2
+	echo "  -s, --shell SHELL             use SHELL instead of the default $DEFAULT_SHELL" 1>&2
+	echo "  -v, --version                 display version number and exit" 1>&2
+	echo "  -V                            display version code and exit" 1>&2
+	echo "  -mm, -M," 1>&2
+	echo "  --mount-master                force run in the global mount namespace" 1>&2
+	echo "  --mount-isolated              run in a new isolated mount namespace" 1>&2
+	echo "  -d --debug                    print all debug output" 1>&2
+	exit 1
+}
 
 interactive=1
 environ=0
@@ -24,6 +28,7 @@ login=0
 command=""
 shell="/system/bin/sh"
 mountmode=$$
+debug=0
 
 options=$(/system/etc/nomagic/busybox getopt -l "command:,help,login,preserve-environment,shell:,version,context:,mount-master,mount-isolated" -o "c:hlmps:Vvz:Mi" -- "$@")
 [ $? -eq 0 ] || {
@@ -72,6 +77,9 @@ while true; do
 		-i)
 			mountmode=0
 			;;
+		-d)
+			debug=1
+			;;
 		-h)
 			usage
 			;;
@@ -86,12 +94,14 @@ while true; do
 	shift || break
 done
 
-echo "interactive=$interactive"
-echo "mountmode=$mountmode"
-echo "environ=$environ"
-echo "login=$login"
-echo "command=$command"
-echo "shell=$shell"
+dbg && {
+	echo "interactive=$interactive"
+	echo "mountmode=$mountmode"
+	echo "environ=$environ"
+	echo "login=$login"
+	echo "command=$command"
+	echo "shell=$shell"
+}
 
 #BEGIN MAIN CODE
 rpipe=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
@@ -126,16 +136,16 @@ read -r message < "$rpipe"
 [ "$message" = "ok" ] || { echo "didnt get okay!";exit 1; }
 
 # Keep sending data
-echo sending mntmode
+dbg && echo sending mntmode
 echo "$mountmode" >> "$wpipe"
 read -r message < "$rpipe"
 [ "$message" = "ok" ] || { echo "didnt get okay!";exit 1; }
-echo sent mntmode
-echo sending shell
+dbg && echo sent mntmode
+dbg && echo sending shell
 echo "$shell" >> "$wpipe"
 read -r message < "$rpipe"
 [ "$message" = "ok" ] || { echo "didnt get okay!";exit 1; }
-echo "sent shell: $shell"
+dbg && echo "sent shell: $shell"
 
 [ "$login" = "1" ] && echo "root" >> "$wpipe" || echo >> "$wpipe"
 read -r message < "$rpipe"
@@ -148,39 +158,35 @@ read -r message < "$rpipe"
 echo "$command" >> "$wpipe"
 
 read -r rinteractive < "$rpipe"
-echo $rinteractive
+dbg && echo rinteractive $rinteractive
 
 if [ "$rinteractive" = "1" ]; then
 	#We don't have to do anything special, the remote will do everything for us and our tty will be taken over.
-	echo "Getting a shell just for you!"
+	dbg && echo "Getting a shell just for you!"
 
-        # Hand over control - we have no more work here.
-        0<&-
-        1<&-
-        2<&-
+	# Hand over control - we have no more work here.
+	0<&-
+	1<&-
+	2<&-
 else
 	#We need to read the stdin/out/err pipes from the rpipe and read them into/out of our stdio. TODO: Trap signals?
-        echo "reading pipes"
-        read -r pipes < "$rpipe"
-        stdinpipe=$(echo "$pipes" | cut -d - -f 1)
-        stdoutpipe=$(echo "$pipes" | cut -d - -f 2)
-        stderrpipe=$(echo "$pipes" | cut -d - -f 3)
-        echo "read pipes $stdinpipe $stdoutpipe $stderrpipe END"
+	dbg && echo "reading pipes"
+	read -r pipes < "$rpipe"
+	stdinpipe=$(echo "$pipes" | cut -d - -f 1)
+	stdoutpipe=$(echo "$pipes" | cut -d - -f 2)
+	stderrpipe=$(echo "$pipes" | cut -d - -f 3)
+	dbg && echo "read pipes $stdinpipe $stdoutpipe $stderrpipe END"
 	cat >$stdinpipe 2>/dev/null &
 	cat $stdoutpipe &
 	cat $stderrpipe >&2 &
 fi
 
-# Check all went well, and leave stuff to happen on its own. su_handler will hijack our pty (tty unsupported rn bcos i havent implemented proper sanitization for full paths.) and launch a shell there.
+# Check all went well, and leave stuff to happen on its own. su_handler will hijack our pty (tty unsupported rn bcos i havent implemented proper sanitization for full paths.) and launch a shell there if we are interactive, otherwise we already spawned cat.
 read -r message < "$rpipe"
 [ "$message" = "ok" ] || { echo "didnt get okay3! $message";exit 1; }
 
 echo "go" >> "$wpipe"
-while true; do
-	read -r rc < "$rpipe" && break # and wait for completion.
-#	sleep 2
-	echo fail
-done
+read -r rc < "$rpipe" || read -r rc < "$rpipe"
 echo "$rc" | grep '[^0-9]'
 [ "$?" = "1" ] || { echo "didn't get retcode, got $rc!";exit 1; }
-exit $rc #no need to sanitize since only root (su_handler) could have access to this pipe.
+exit $rc
