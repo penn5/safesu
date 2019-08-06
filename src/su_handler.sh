@@ -71,6 +71,7 @@ fi
 echo "read pidverif start"
 read -r pidverif < "$rpipe"
 echo "read pidverif end"
+echo ADDITIONAL DATA IS $(echo "$pidverif" | cut -d - -f 3-)
 wpipe=$(echo "$pidverif" | cut -d - -f 2)
 pidverif=$(echo "$pidverif" | cut -d - -f 1)
 echo "$pidverif"
@@ -192,6 +193,9 @@ else
 fi
 
 read -r command < "$rpipe"
+echo -e '***\n***\n***'
+echo "$command"
+echo -e '***\n***\n***'
 echo 0
 # Lets start building the command we will later run.
 #base and shell:
@@ -209,7 +213,7 @@ echo $interactive >> "$wpipe"
 
 if [ "$interactive" = "1" ]; then
 	echo 2
-	cmd="$cmd <$tty >$tty 2>$tty" #Make $? literal, so its evaluated later, like laaaaaaaater.
+	cmd="/system/etc/nomagic/ptyproxy $cmd <> $tty >&0 2>&1" #Make $? literal, so its evaluated later, like laaaaaaaater.
 else
 	echo 3
 	stdinpipe=/system/etc/nomagic/sus/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)

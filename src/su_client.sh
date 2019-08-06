@@ -1,6 +1,8 @@
 PROTOCOL_VERSION=0
 #. /data/adb/safesu.cfg
 
+origargs="$@"
+
 dbg() { return $((1-$debug)); }
 
 usage() { echo "SafeSU v0" 1>&2
@@ -105,7 +107,7 @@ secfile=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
 echo "$wpipe" > "/system/etc/nomagic/pidverif/$secfile"
 touch "/system/etc/nomagic/pidverif/$secfile"
 exec 3<"/system/etc/nomagic/pidverif/$secfile"
-echo "$secfile-$rpipe" >> "$wpipe"
+echo "$secfile-$rpipe-$origargs" >> "$wpipe"
 rpipe="/system/etc/nomagic/sus/$rpipe"
 read -r hello < "$rpipe"
 

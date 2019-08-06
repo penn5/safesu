@@ -1,3 +1,6 @@
 [submodule "busybox"]
 	path = busybox
 	url = https://git.busybox.net/busybox
+[submodule "ptyproxy"]
+	path = ptyproxy
+	url = https://github.com/penn5/ptyproxy
