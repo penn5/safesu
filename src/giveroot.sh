@@ -1,6 +1,7 @@
 #!/system/bin/sh
 
 DIR="$(realpath "$(dirname "$(readlink -f "$0")")")"
+TARGET="/system/xbin"
 
 zygoteMntNs="$(readlink /proc/$(pidof zygote)/ns/mnt)"
 zygote64MntNs="$(readlink /proc/$(pidof zygote64)/ns/mnt)"
@@ -17,28 +18,29 @@ do
 	fi
 
 	echo "Giving root to pid $pid, package name $pkgname now."
-	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- mount -t tmpfs none /system/xbin
+	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- mount -t tmpfs none "$TARGET"
 	echo "nsenter mount command returned $?"
-	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- cp "$DIR/busybox" /system/xbin
+	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- cp "$DIR/busybox" "$TARGET"
 	echo "nsenter cp command returned $?"
-	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- cp "$DIR/su_helper.sh" /system/xbin
+	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- cp "$DIR/su_helper.sh" "$TARGET"
 	echo "nsenter cp command returned $?"
-	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- cp "$DIR/su_handler.sh" /system/xbin
+	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- cp "$DIR/su_handler.sh" "$TARGET"
 	echo "nsenter cp command returned $?"
-	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- cp "$DIR/su_client.sh" /system/xbin/su
+	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- cp "$DIR/su_client.sh" "$TARGET/su"
 	echo "nsenter cp command returned $?"
 
-	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- chcon u:object_r:system_file:s0 "$DIR/busybox"
+	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- chcon u:object_r:system_file:s0 "$TARGET/busybox"
 	echo "nsenter chcon command returned $?"
-	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- chcon u:object_r:system_file:s0 "$DIR/su_helper.sh"
+	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- chcon u:object_r:system_file:s0 "$TARGET/su_helper.sh"
 	echo "nsenter chcon command returned $?"
-	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- chcon u:object_r:system_file:s0 "$DIR/su_handler.sh"
+	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- chcon u:object_r:system_file:s0 "$TARGET/su_handler.sh"
 	echo "nsenter chcon command returned $?"
-	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- chcon u:object_r:system_file:s0 "$DIR/su"
+	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- chcon u:object_r:system_file:s0 "$TARGET/su"
+	echo "$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- chcon u:object_r:system_file:s0 "$TARGET/su"
 	echo "nsenter chcon command returned $?"
 
 
-	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- "$DIR/su_helper.sh"
+	"$DIR/busybox" nsenter -m/proc/$pid/ns/mnt -- "$TARGET/su_helper.sh"
 	echo "nsenter helper command returned $?"
 done
 return 2
