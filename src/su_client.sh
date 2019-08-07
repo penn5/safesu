@@ -1,6 +1,8 @@
 PROTOCOL_VERSION=0
 #. /data/adb/safesu.cfg
 
+DIR="$(dirname "$(readlink -f "$0")")"
+
 origargs="$@"
 
 dbg() { return $((1-$debug)); }
@@ -32,7 +34,7 @@ shell="/system/bin/sh"
 mountmode=$$
 debug=0
 
-options=$(/system/etc/nomagic/busybox getopt -l "command:,help,login,preserve-environment,shell:,version,context:,mount-master,mount-isolated,debug" -o "c:hlmps:Vvz:Mid" -- "$@")
+options=$("$DIR/busybox" getopt -l "command:,help,login,preserve-environment,shell:,version,context:,mount-master,mount-isolated,debug" -o "c:hlmps:Vvz:Mid" -- "$@")
 [ $? -eq 0 ] || {
 	echo "$options"
 	echo "Incorrect options provided"
@@ -99,23 +101,23 @@ dbg && {
 
 #BEGIN MAIN CODE
 rpipe=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
-/system/etc/nomagic/busybox mknod "/system/etc/nomagic/sus/$rpipe" p
-wpipe=/system/etc/nomagic/sureq/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
-/system/etc/nomagic/busybox mknod "$wpipe" p
+"$DIR/busybox" mknod "$DIR/sus/$rpipe" p
+wpipe="$DIR/sureq/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)"
+"$DIR/busybox" mknod "$wpipe" p
 
 secfile=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
-echo "$wpipe" > "/system/etc/nomagic/pidverif/$secfile"
-touch "/system/etc/nomagic/pidverif/$secfile"
-exec 3<"/system/etc/nomagic/pidverif/$secfile"
+echo "$wpipe" > "$DIR/pidverif/$secfile"
+touch "$DIR/pidverif/$secfile"
+exec 3<"$DIR/pidverif/$secfile"
 echo "$secfile-$rpipe-$origargs" >> "$wpipe"
-rpipe="/system/etc/nomagic/sus/$rpipe"
+rpipe="$DIR/sus/$rpipe"
 read -r hello < "$rpipe"
 
 exec 3<&-
 
 [ "$hello" = "$PROTOCOL_VERSION" ] || (echo "incorrect hello from su_handler, got $hello!";exit 1)
 
-rm -f "/system/etc/nomagic/pidverif/$secfile"
+rm -f "$DIR/pidverif/$secfile"
 
 if [ ! -t 0 ] || [ ! -t 1 ] || [ "$interactive" = "0" ]; then
 	# non-interactive

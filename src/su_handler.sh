@@ -24,6 +24,8 @@
 
 echo "HANDLER INIT"
 
+DIR="$(dirname "$(readlink -f "$0")")"
+
 PROTOCOL_VERSION=0
 
 find_package_name () {
@@ -58,7 +60,7 @@ find_package_name () {
 
 echo "$1 $2 $3"
 
-rpipe="/system/etc/nomagic/sureq/$3"
+rpipe="$DIR/sureq/$3"
 
 if [ ! -p $rpipe ]; then
 	echo "$p not a pipe"
@@ -81,7 +83,7 @@ if [ "$?" = "0" ]; then
 	exit 40
 fi
 
-pidverif="/system/etc/nomagic/pidverif/$pidverif"
+pidverif="$DIR/pidverif/$pidverif"
 if [ ! -f "$pidverif" ]; then
 	echo "INVALID PIDVERIF"
 	exit 40
@@ -113,7 +115,7 @@ if [ "$?" = "0" ]; then
 	exit 1
 fi
 
-wpipe="/system/etc/nomagic/sus/$wpipe"
+wpipe="$DIR/sus/$wpipe"
 
 if [ ! -p "$wpipe" ]; then
 	echo "WPIPE DOES NOT EXIST"
@@ -202,7 +204,7 @@ echo 0
 cmd="$shell"
 
 if [ ! -z "$command" ]; then
-	tmpcommand=/system/etc/nomagic/cmds/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
+	tmpcommand="$DIR/cmds/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)"
         echo -En "$command" > "$tmpcommand" # i cba to quote everything right
 	cmd="$cmd $tmpcommand"
 fi
@@ -213,15 +215,15 @@ echo $interactive >> "$wpipe"
 
 if [ "$interactive" = "1" ]; then
 	echo 2
-	cmd="/system/etc/nomagic/ptyproxy $cmd <> $tty >&0 2>&1" #Make $? literal, so its evaluated later, like laaaaaaaater.
+	cmd="$DIR/ptyproxy $cmd <> $tty >&0 2>&1" #Make $? literal, so its evaluated later, like laaaaaaaater.
 else
 	echo 3
-	stdinpipe=/system/etc/nomagic/sus/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
-	stdoutpipe=/system/etc/nomagic/sus/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
-	stderrpipe=/system/etc/nomagic/sus/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
-	/system/etc/nomagic/busybox mknod "$stdinpipe" p
-	/system/etc/nomagic/busybox mknod "$stdoutpipe" p
-	/system/etc/nomagic/busybox mknod "$stderrpipe" p
+	stdinpipe="$DIR/sus/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)"
+	stdoutpipe="$DIR/sus/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)"
+	stderrpipe="$DIR/sus/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)"
+	"$DIR/busybox" mknod "$stdinpipe" p
+	"$DIR/busybox" mknod "$stdoutpipe" p
+	"$DIR/busybox" mknod "$stderrpipe" p
         echo "pipes $stdinpipe $stdoutpipe $stderrpipe END"
 	echo "$stdinpipe-$stdoutpipe-$stderrpipe" >> "$wpipe"
         echo pipes sent
@@ -245,7 +247,7 @@ echo "5: $wpipe"
 read -r message < "$rpipe"
 echo 6
 [ "$message" = "go" ] || { echo "they aborted!"; exit 20; }
-/system/etc/nomagic/busybox nsenter -m$chnspath -S$chuid -- setsid /system/bin/sh -c "$cmd" &
+"$DIR/busybox" nsenter -m$chnspath -S$chuid -- setsid /system/bin/sh -c "$cmd" &
 echo 7
 
 exit 10

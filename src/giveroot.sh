@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-#IFS=';'
+DIR="$(dirname "$(readlink -f "$0")")"
 
 zygoteMntNs="$(readlink /proc/$(pidof zygote)/ns/mnt)"
 zygote64MntNs="$(readlink /proc/$(pidof zygote64)/ns/mnt)"
@@ -16,7 +16,7 @@ do
 	        continue
 	fi
 	echo "Giving root to pid $pid, package name $pkgname now."
-	/system/etc/nomagic/busybox nsenter -m/proc/$pid/ns/mnt -- mount -o bind,private /system/etc/nomagic /system/xbin
+	"${DIR}/busybox" nsenter -m/proc/$pid/ns/mnt -- mount -o bind,private "$DIR" /system/xbin
 	echo "nsenter mount command returned $?"
 done
 return 2
