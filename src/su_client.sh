@@ -1,7 +1,7 @@
-PROTOCOL_VERSION=0
+PROTOCOL_VERSION=1
 #. /data/adb/safesu.cfg
 
-DIR="$(dirname "$(readlink -f "$0")")"
+DIR="$(realpath "$(dirname "$(readlink -f "$0")")")"
 
 origargs="$@"
 
@@ -100,24 +100,23 @@ dbg && {
 }
 
 #BEGIN MAIN CODE
-rpipe=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
-"$DIR/busybox" mknod "$DIR/sus/$rpipe" p
-wpipe="$DIR/sureq/$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)"
-"$DIR/busybox" mknod "$wpipe" p
+rpipe="$DIR/su_read.pipe"
+wpipe="$DIR/su_read.pipe"
 
-secfile=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 50)
-echo "$wpipe" > "$DIR/pidverif/$secfile"
-touch "$DIR/pidverif/$secfile"
-exec 3<"$DIR/pidverif/$secfile"
-echo "$secfile-$rpipe-$origargs" >> "$wpipe"
-rpipe="$DIR/sus/$rpipe"
+secfile="$DIR/su_pidverif"
+
+
+
 read -r hello < "$rpipe"
 
-exec 3<&-
+[ "$hello" = "$PROTOCOL_VERSION" ] || { echo "incorrect hello from su_handler, got $hello!"; echo "no" >> "$wpipe"; exit 1; }
 
-[ "$hello" = "$PROTOCOL_VERSION" ] || (echo "incorrect hello from su_handler, got $hello!";exit 1)
+# Open the security verification file to make prove who we are
+exec 3<"$secfile"
 
-rm -f "$DIR/pidverif/$secfile"
+echo "ok" >> "$wpipe"
+read -r ack < "$rpipe"
+[ "$ack" = "ok" ] || { echo "pid verification failed"; exit 99; }
 
 if [ ! -t 0 ] || [ ! -t 1 ] || [ "$interactive" = "0" ]; then
 	# non-interactive

@@ -1,32 +1,13 @@
 #!/system/bin/sh
-# busybox that we use says:
-#/*
-# * Use as follows:
-# * # inotifyd /user/space/agent dir/or/file/being/watched[:mask] ...
-# *
-# * When a filesystem event matching the specified mask is occured on specified file (or directory)
-# * a userspace agent is spawned and given the following parameters:
-# * $1. actual event(s)
-# * $2. file (or directory) name
-# * $3. name of subfile (if any), in case of watching a directory
-# *
-# * E.g. inotifyd ./dev-watcher /dev:n
-# *
-# * ./dev-watcher can be, say:
-# * #!/bin/sh
-# * echo "We have new device in here! Hello, $3!"
-# *
-# * See below for mask names explanation.
-# */
-# We are ./dev-watcher in the above example.
 
-# The mask is :n so we know we will not have to check the type.
+# We are invoked as root. It is our job to initialize comm channels, relabel them as ashmem devices and wait for a connection.
+# Everything must stay in our local, hidden directory.
 
 echo "HANDLER INIT"
 
-DIR="$(dirname "$(readlink -f "$0")")"
+DIR="$(realpath "$(dirname "$(readlink -f "$0")")")"
 
-PROTOCOL_VERSION=0
+PROTOCOL_VERSION=1
 
 find_package_name () {
 	echo "$1"
@@ -58,70 +39,38 @@ find_package_name () {
 	fi
 }
 
-echo "$1 $2 $3"
+wpipe="$DIR/su_read.pipe"
+rpipe="$DIR/su_write.pipe"
 
-rpipe="$DIR/sureq/$3"
+"$DIR/busybox" mknod "$wpipe" p
+chcon u:object_r:ashmem_device:s0 "$wpipe"
+"$DIR/busybox" mknod "$rpipe" p
+chcon u:object_r:ashmem_device:s0 "$rpipe"
 
-if [ ! -p $rpipe ]; then
-	echo "$p not a pipe"
-	exit 0 #probably just some naughty person trying to trick is, we don't care.
-fi
+pidverif="$DIR/su_pidverif"
+touch "$pidverif"
+chcon u:object_r:ashmem_device:s0 "$pidverif"
 
+echo "$PROTOCOL_VERSION" >> "$wpipe" # Version number
 
+read -r ack < "$rpipe"
+[ "$ack" = "ok" ] || { echo "protocol version mismatch!"; return 99; }
 
-# Make sure this process is allowed su access before we even set up the write channel.
-echo "read pidverif start"
-read -r pidverif < "$rpipe"
-echo "read pidverif end"
-echo ADDITIONAL DATA IS $(echo "$pidverif" | cut -d - -f 3-)
-wpipe=$(echo "$pidverif" | cut -d - -f 2)
-pidverif=$(echo "$pidverif" | cut -d - -f 1)
-echo "$pidverif"
-echo "$pidverif" | grep '[^a-zA-Z0-9]'
-if [ "$?" = "0" ]; then
-	echo "INVALID PIDVERIF"
-	exit 40
-fi
-
-pidverif="$DIR/pidverif/$pidverif"
-if [ ! -f "$pidverif" ]; then
-	echo "INVALID PIDVERIF"
-	exit 40
-fi
-
-read -r pidcheck < "$pidverif"
-
-if [ ! "$rpipe" = "$pidcheck" ]; then
-	echo "SECURITY ERROR, ABORTING BEFORE WE ARE DETECTED! $3 $pidcheck"
-	exit 99
-fi
+# Make sure this process is allowed su access.
+# Needed because someone might be injecting logs to trick us into launching this server.
 
 openpid=$(lsof -t "$pidverif" | cut -d , -f 1)
 if [ -z "$openpid" ]; then
-	echo "NOONE HAS OPENED THE SECURITY CHECK FILE, UNABLE TO VERIFY PID."
+	echo "security check file not opened, unable to verify pid."
 	exit 97
 fi
-echo $openpid
-echo "Processing root request from package/process: $pkgname"
+echo "$openpid"
 find_package_name "$openpid"
 ret="$?"
 echo "$ret"
-[ "$ret" = "0" ] || { echo "SECURITY ERROR, UNAUTHORIZED SU REQUEST. EXITING. "; exit 98; }
+[ "$ret" = "0" ] || { echo "someone is spoofing your logs. you have a malicious app. exiting. "; exit 98; }
 
-# Assert that wpipe is alphanumerical and the right length, otherwise we might get someone trying to abuse the su daemon to write to arbritary locations on disk as root, potentially /data/adb/rootallow.txt.
-echo "$wpipe" | grep '[^a-zA-Z0-9]'
-if [ "$?" = "0" ]; then
-	echo "INVALID WPIPE"
-	exit 1
-fi
-
-wpipe="$DIR/sus/$wpipe"
-
-if [ ! -p "$wpipe" ]; then
-	echo "WPIPE DOES NOT EXIST"
-	exit 2
-fi
-echo "$PROTOCOL_VERSION" >> "$wpipe" # Version number
+echo "ok" >> "$wpipe"
 
 read -r tty < "$rpipe"
 
