@@ -31,4 +31,3 @@ cd ..
 cp ptyproxy/ptyproxy out/system/etc/nomagic/ptyproxy
 
 cp src/*.sh out/system/etc/nomagic
-ln -s su_client.sh out/system/etc/nomagic/su
