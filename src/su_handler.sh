@@ -173,6 +173,9 @@ else
 	"$DIR/busybox" mknod "$stdinpipe" p
 	"$DIR/busybox" mknod "$stdoutpipe" p
 	"$DIR/busybox" mknod "$stderrpipe" p
+	chcon u:object_r:ashmem_device:s0 "$stdinpipe"
+	chcon u:object_r:ashmem_device:s0 "$stdoutpipe"
+	chcon u:object_r:ashmem_device:s0 "$stderrpipe"
         echo "pipes $stdinpipe $stdoutpipe $stderrpipe END"
 	echo "$stdinpipe-$stdoutpipe-$stderrpipe" >> "$wpipe"
         echo pipes sent

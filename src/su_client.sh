@@ -1,7 +1,9 @@
+#!/system/bin/sh
+
 PROTOCOL_VERSION=1
 #. /data/adb/safesu.cfg
 
-DIR="$(realpath "$(dirname "$(readlink -f "$0")")")"
+DIR="$(dirname $0)"
 
 origargs="$@"
 
